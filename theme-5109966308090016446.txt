@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quiz Cocok UKM – UIN Sunan Gunung Djati Bandung</title>
+<style>
+:root{
+  --bg:#eef5f1; --card:#ffffff; --ink:#12302a; --muted:#52695f;
+  --brand:#0f6b4f; --brand-dark:#0a4d39; --accent:#f2b705; --line:#cfe0d6;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0e1c17; --card:#16282200; --card:#162822; --ink:#e6f2ec; --muted:#9db5aa;
+        --brand:#3ec28f; --brand-dark:#2aa077; --accent:#f2b705; --line:#2a4339;}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Trebuchet MS","Segoe UI",Tahoma,sans-serif;line-height:1.55;min-height:100vh}
+.wrap{max-width:640px;margin:0 auto;padding:28px 18px 56px}
+h1{font-family:Georgia,"Times New Roman",serif;font-size:2rem;line-height:1.2;margin:0 0 10px}
+h2{font-family:Georgia,serif;font-size:1.4rem;line-height:1.3;margin:0 0 18px}
+p{margin:0 0 14px}
+.muted{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px}
+.btn{font:inherit;font-weight:700;border:0;border-radius:10px;padding:12px 22px;cursor:pointer;
+  background:var(--accent);color:#2b2100}
+.btn:hover{filter:brightness(.95)}
+.btn.ghost{background:transparent;border:1.5px solid var(--brand);color:var(--brand)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.bar{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin-bottom:6px}
+.bar i{display:block;height:100%;width:0;background:var(--brand);transition:width .3s}
+.count{font-size:.9rem;color:var(--muted);margin-bottom:18px}
+.opt{display:block;width:100%;text-align:left;font:inherit;color:var(--ink);background:transparent;
+  border:1.5px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer}
+.opt:hover{border-color:var(--brand);background:rgba(15,107,79,.07)}
+.opt.sel{border-color:var(--brand);background:rgba(15,107,79,.14);font-weight:700}
+.nav{display:flex;justify-content:space-between;margin-top:14px;gap:10px}
+.hidden{display:none}
+.top{border-left:8px solid var(--accent)}
+.badge{display:inline-block;background:var(--brand);color:#fff;border-radius:99px;
+  padding:3px 12px;font-size:.85rem;margin-bottom:10px}
+.pct{font-weight:700;color:var(--brand)}
+.alt{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.alt:first-of-type{border-top:0}
+.note{font-size:.85rem;color:var(--muted);margin-top:22px}
+</style>
+</head>
+<body>
+<main class="wrap">
+
+  <section id="intro" class="card">
+    <h1>UKM apa yang cocok buat kamu?</h1>
+    <p class="muted">Untuk mahasiswa baru UIN Sunan Gunung Djati Bandung. Jawab 8 pertanyaan singkat, lalu lihat UKM yang paling sesuai dengan minat dan kepribadianmu.</p>
+    <button class="btn" id="start">Mulai quiz</button>
+  </section>
+
+  <section id="quiz" class="hidden">
+    <div class="bar"><i id="prog"></i></div>
+    <div class="count" id="count"></div>
+    <div class="card">
+      <h2 id="q"></h2>
+      <div id="opts"></div>
+      <div class="nav">
+        <button class="btn ghost" id="back">Kembali</button>
+        <button class="btn" id="next" disabled>Lanjut</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="result" class="hidden"></section>
+
+</main>
+
+<script>
+/* ============ DATA: edit bagian ini sesuai kebutuhan ============ */
+
+// Kategori minat (kunci dipakai untuk skor)
+const KATEGORI = {
+  jurnalistik: "Menulis & media",
+  seni: "Seni & budaya",
+  olahraga: "Olahraga & bela diri",
+  alam: "Petualangan alam",
+  organisasi: "Kepemimpinan & disiplin",
+  agama: "Keagamaan & dakwah",
+  sosial: "Kemanusiaan & sosial",
+  bisnis: "Kewirausahaan & kreativitas"
+};
+
+// Daftar UKM. Ubah nama & deskripsi agar sesuai data resmi kampus.
+const UKM = [
+  { nama:"LPM Suaka", cat:"jurnalistik",
+    desc:"Pers mahasiswa: menulis berita, opini, riset, dan mengelola media kampus." },
+  { nama:"Teater Awal", cat:"seni",
+    desc:"Wadah akting, penulisan naskah, dan pementasan teater." },
+  { nama:"Lises Gentra Kaheman", cat:"seni",
+    desc:"Seni dan budaya Sunda: karawitan, tari, dan kesenian tradisional." },
+  { nama:"UKM Olahraga & Bela Diri", cat:"olahraga",
+    desc:"Latihan rutin berbagai cabang olahraga dan bela diri, serta ikut kejuaraan." },
+  { nama:"Mapala (Pecinta Alam)", cat:"alam",
+    desc:"Mendaki gunung, panjat tebing, susur gua, dan konservasi lingkungan." },
+  { nama:"Pramuka", cat:"organisasi",
+    desc:"Melatih kepemimpinan, kemandirian, kerja sama tim, dan keterampilan lapangan." },
+  { nama:"Menwa", cat:"organisasi",
+    desc:"Pelatihan bela negara, kedisiplinan, dan fisik yang terstruktur." },
+  { nama:"UKM Keagamaan & Dakwah", cat:"agama",
+    desc:"Kajian keislaman, seni religi, tilawah, dan kegiatan dakwah kampus." },
+  { nama:"KSR PMI", cat:"sosial",
+    desc:"Relawan kemanusiaan: pertolongan pertama, donor darah, dan tanggap bencana." },
+  { nama:"UKM Kewirausahaan & Kreatif", cat:"bisnis",
+    desc:"Belajar berbisnis, membuat produk, dan mengembangkan ide kreatif." }
+];
+
+// Pertanyaan: setiap pilihan menambah poin ke kategori tertentu
+const SOAL = [
+  { q:"Di waktu luang, kamu paling senang…",
+    o:[ ["Menulis atau membaca hal-hal baru", {jurnalistik:3}],
+        ["Latihan musik, tari, atau berakting", {seni:3}],
+        ["Olahraga atau bergerak aktif", {olahraga:3, alam:1}],
+        ["Jalan-jalan ke alam terbuka", {alam:3}] ]},
+  { q:"Di sebuah kelompok, peran yang paling nyaman buatmu adalah…",
+    o:[ ["Pemimpin yang mengatur tim", {organisasi:3}],
+        ["Penghubung ide dan penyampai cerita", {jurnalistik:2, seni:1}],
+        ["Penolong yang peduli pada anggota", {sosial:3}],
+        ["Pencari peluang dan ide baru", {bisnis:3}] ]},
+  { q:"Tantangan seperti apa yang paling menarik?",
+    o:[ ["Mendaki gunung atau medan sulit", {alam:3, olahraga:1}],
+        ["Tampil di depan banyak orang", {seni:3}],
+        ["Meliput dan mengungkap sebuah isu", {jurnalistik:3}],
+        ["Membangun usaha dari nol", {bisnis:3}] ]},
+  { q:"Apa yang ingin kamu dapat dari UKM?",
+    o:[ ["Disiplin dan mental tangguh", {organisasi:3, olahraga:1}],
+        ["Teman seperjuangan dan prestasi", {olahraga:3}],
+        ["Pahala dan ilmu agama yang lebih dalam", {agama:3}],
+        ["Pengalaman berguna untuk orang lain", {sosial:3}] ]},
+  { q:"Pilih suasana kegiatan favoritmu:",
+    o:[ ["Panggung, lampu, dan tepuk tangan", {seni:3}],
+        ["Ruang redaksi dan diskusi tajam", {jurnalistik:3}],
+        ["Perkemahan dan kegiatan lapangan", {organisasi:2, alam:2}],
+        ["Majelis kajian yang hangat", {agama:3}] ]},
+  { q:"Kalau ada bencana atau orang butuh bantuan, kamu akan…",
+    o:[ ["Langsung turun tangan sebagai relawan", {sosial:3}],
+        ["Mengumpulkan donasi dan mengorganisir bantuan", {bisnis:1, organisasi:2}],
+        ["Menulis dan menyebarkan informasi yang akurat", {jurnalistik:2, sosial:1}],
+        ["Mengajak teman berdoa dan menguatkan", {agama:2, sosial:1}] ]},
+  { q:"Kemampuan mana yang paling ingin kamu asah?",
+    o:[ ["Kreativitas dan kesenian", {seni:3}],
+        ["Fisik dan teknik bela diri", {olahraga:3}],
+        ["Strategi dan kepemimpinan", {organisasi:3}],
+        ["Negosiasi dan jiwa dagang", {bisnis:3}] ]},
+  { q:"Energi sosialmu seperti apa?",
+    o:[ ["Suka kegiatan ramai dan berpindah tempat", {alam:2, olahraga:1, sosial:1}],
+        ["Suka bekerja dengan tim kecil yang fokus", {jurnalistik:2, bisnis:1}],
+        ["Suka berkumpul dengan komunitas yang erat", {agama:2, seni:1}],
+        ["Suka memimpin dan memberi arahan", {organisasi:3}] ]}
+];
+
+/* ============ LOGIKA QUIZ ============ */
+const $ = id => document.getElementById(id);
+let idx = 0;
+let jawab = new Array(SOAL.length).fill(null);
+
+$("start").onclick = () => { $("intro").classList.add("hidden"); $("quiz").classList.remove("hidden"); show(); };
+$("back").onclick = () => { if (idx > 0) { idx--; show(); } };
+$("next").onclick = () => { if (idx < SOAL.length - 1) { idx++; show(); } else hasil(); };
+
+function show(){
+  const s = SOAL[idx];
+  $("q").textContent = s.q;
+  $("count").textContent = "Pertanyaan " + (idx+1) + " dari " + SOAL.length;
+  $("prog").style.width = (idx / SOAL.length * 100) + "%";
+  $("opts").innerHTML = "";
+  s.o.forEach((o, i) => {
+    const b = document.createElement("button");
+    b.className = "opt" + (jawab[idx] === i ? " sel" : "");
+    b.textContent = o[0];
+    b.onclick = () => { jawab[idx] = i; show(); };
+    $("opts").appendChild(b);
+  });
+  $("next").disabled = jawab[idx] === null;
+  $("next").textContent = idx === SOAL.length - 1 ? "Lihat hasil" : "Lanjut";
+  $("back").style.visibility = idx === 0 ? "hidden" : "visible";
+}
+
+function hasil(){
+  // Hitung skor tiap kategori
+  const skor = {}, maks = {};
+  Object.keys(KATEGORI).forEach(k => { skor[k] = 0; maks[k] = 0; });
+  SOAL.forEach((s, n) => {
+    s.o.forEach(o => { for (const k in o[1]) maks[k] = Math.max(maks[k], 0); });
+    // skor maksimum per soal untuk tiap kategori
+    const best = {};
+    s.o.forEach(o => { for (const k in o[1]) best[k] = Math.max(best[k] || 0, o[1][k]); });
+    for (const k in best) maks[k] += best[k];
+    const pilih = s.o[jawab[n]][1];
+    for (const k in pilih) skor[k] += pilih[k];
+  });
+
+  // Skor tiap UKM sebagai persentase kecocokan
+  const urut = UKM.map(u => ({ ...u, pct: Math.round(skor[u.cat] / (maks[u.cat] || 1) * 100) }))
+                  .sort((a, b) => b.pct - a.pct);
+  const top = urut[0], lain = urut.slice(1, 4);
+
+  $("quiz").classList.add("hidden");
+  const r = $("result");
+  r.classList.remove("hidden");
+  r.innerHTML = `
+    <div class="card top">
+      <span class="badge">${KATEGORI[top.cat]}</span>
+      <p class="muted" style="margin-bottom:4px">UKM yang paling cocok untukmu</p>
+      <h1>${top.nama}</h1>
+      <p><span class="pct">${top.pct}% cocok.</span> ${top.desc}</p>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h2 style="font-size:1.15rem">Pilihan lain yang layak dicoba</h2>
+      ${lain.map(u => `<div class="alt"><div><strong>${u.nama}</strong><br><span class="muted">${u.desc}</span></div><span class="pct">${u.pct}%</span></div>`).join("")}
+    </div>
+    <div style="margin-top:18px"><button class="btn" id="ulang">Ulangi quiz</button></div>
+    <p class="note">Hasil ini hanya rekomendasi awal. Cek informasi pendaftaran dan jadwal terbaru langsung ke masing-masing UKM.</p>`;
+  $("ulang").onclick = () => { jawab.fill(null); idx = 0; r.classList.add("hidden"); $("quiz").classList.remove("hidden"); show(); };
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+</script>
+</body>
+</html>
